@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Kunderegister</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: Arial, sans-serif; background: #f4f6f8; color: #1f2937; }
+    .container { max-width: 620px; margin: 0 auto; padding: 18px; }
+    h1 { font-size: 1.6rem; margin-bottom: 4px; }
+    .subtitle { color: #6b7280; margin-bottom: 20px; }
+    .card { background: white; border-radius: 16px; padding: 18px; box-shadow: 0 8px 22px rgba(0,0,0,0.08); margin-bottom: 18px; }
+    label { display: block; margin-top: 14px; margin-bottom: 6px; font-weight: bold; font-size: 0.95rem; }
+    input, textarea, button { width: 100%; font-size: 1rem; padding: 13px; border-radius: 12px; border: 1px solid #d1d5db; }
+    textarea { min-height: 70px; resize: vertical; }
+    button { border: none; margin-top: 18px; font-weight: bold; cursor: pointer; }
+    .primary { background: #2563eb; color: white; }
+    .secondary { background: #e5e7eb; color: #111827; }
+    .danger { background: #fee2e2; color: #991b1b; }
+    .customer { padding: 14px; border-bottom: 1px solid #e5e7eb; }
+    .customer:last-child { border-bottom: none; }
+    .customer strong { display: block; margin-bottom: 4px; }
+    .small { color: #6b7280; font-size: 0.9rem; line-height: 1.4; }
+    .actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    a { color: #2563eb; font-weight: bold; text-decoration: none; }
+  </style>
+</head>
+<body>
+  <main class="container">
+    <h1>Kunderegister</h1>
+    <div class="subtitle">Egen app for kunder. Timeregistreringen slår opp kundenr herfra.</div>
+
+    <section class="card">
+      <a href="index.html">← Til timeregistrering</a>
+
+      <form id="customerForm">
+        <label for="customerNumber">Kundenr</label>
+        <input type="text" id="customerNumber" placeholder="F.eks. 100" required />
+
+        <label for="customerName">Kundenavn</label>
+        <input type="text" id="customerName" placeholder="F.eks. Kunde AS" required />
+
+        <label for="orgNumber">Org.nr</label>
+        <input type="text" id="orgNumber" placeholder="F.eks. 999999999" />
+
+        <label for="contactName">Kontaktperson</label>
+        <input type="text" id="contactName" />
+
+        <label for="email">E-post</label>
+        <input type="email" id="email" />
+
+        <label for="phone">Telefon</label>
+        <input type="text" id="phone" />
+
+        <label for="address">Adresse</label>
+        <textarea id="address" placeholder="Gateadresse, postnr og sted"></textarea>
+
+        <button class="primary" type="submit">Lagre kunde</button>
+      </form>
+    </section>
+
+    <section class="card">
+      <h2>Registrerte kunder</h2>
+      <div id="customersList"></div>
+    </section>
+  </main>
+
+  <script>
+    const customerForm = document.getElementById('customerForm');
+    const customersList = document.getElementById('customersList');
+
+    let customers = JSON.parse(localStorage.getItem('agkCustomers') || '[]');
+
+    function normalizeCustomerNumber(value) {
+      return String(value || '').trim();
+    }
+
+    function saveCustomers() {
+      localStorage.setItem('agkCustomers', JSON.stringify(customers));
+    }
+
+    function clearForm() {
+      document.getElementById('customerNumber').value = '';
+      document.getElementById('customerName').value = '';
+      document.getElementById('orgNumber').value = '';
+      document.getElementById('contactName').value = '';
+      document.getElementById('email').value = '';
+      document.getElementById('phone').value = '';
+      document.getElementById('address').value = '';
+      document.getElementById('customerNumber').focus();
+    }
+
+    function editCustomer(customerNumber) {
+      const customer = customers.find(c => normalizeCustomerNumber(c.customerNumber) === normalizeCustomerNumber(customerNumber));
+      if (!customer) return;
+
+      document.getElementById('customerNumber').value = customer.customerNumber || '';
+      document.getElementById('customerName').value = customer.customerName || '';
+      document.getElementById('orgNumber').value = customer.orgNumber || '';
+      document.getElementById('contactName').value = customer.contactName || '';
+      document.getElementById('email').value = customer.email || '';
+      document.getElementById('phone').value = customer.phone || '';
+      document.getElementById('address').value = customer.address || '';
+      document.getElementById('customerName').focus();
+    }
+
+    function deleteCustomer(customerNumber) {
+      if (!confirm('Vil du slette denne kunden?')) return;
+      customers = customers.filter(c => normalizeCustomerNumber(c.customerNumber) !== normalizeCustomerNumber(customerNumber));
+      saveCustomers();
+      renderCustomers();
+    }
+
+    function renderCustomers() {
+      if (customers.length === 0) {
+        customersList.innerHTML = '<p class="small">Ingen kunder lagret ennå.</p>';
+        return;
+      }
+
+      customersList.innerHTML = customers
+        .slice()
+        .sort((a, b) => String(a.customerNumber).localeCompare(String(b.customerNumber), 'no'))
+        .map(customer => `
+          <div class="customer">
+            <strong>${customer.customerNumber} - ${customer.customerName}</strong>
+            <div class="small">
+              ${customer.orgNumber ? 'Org.nr: ' + customer.orgNumber + '<br>' : ''}
+              ${customer.contactName ? 'Kontakt: ' + customer.contactName + '<br>' : ''}
+              ${customer.email ? 'E-post: ' + customer.email + '<br>' : ''}
+              ${customer.phone ? 'Telefon: ' + customer.phone + '<br>' : ''}
+              ${customer.address ? customer.address.replace(/\n/g, '<br>') : ''}
+            </div>
+            <div class="actions">
+              <button class="secondary" type="button" onclick="editCustomer('${String(customer.customerNumber).replace(/'/g, "\\'")}')">Rediger</button>
+              <button class="danger" type="button" onclick="deleteCustomer('${String(customer.customerNumber).replace(/'/g, "\\'")}')">Slett</button>
+            </div>
+          </div>
+        `).join('');
+    }
+
+    customerForm.addEventListener('submit', event => {
+      event.preventDefault();
+
+      const customerNumber = normalizeCustomerNumber(document.getElementById('customerNumber').value);
+      const customerName = document.getElementById('customerName').value.trim();
+
+      if (!customerNumber || !customerName) {
+        alert('Kundenr og kundenavn må fylles ut.');
+        return;
+      }
+
+      const customer = {
+        customerNumber: customerNumber,
+        customerName: customerName,
+        orgNumber: document.getElementById('orgNumber').value.trim(),
+        contactName: document.getElementById('contactName').value.trim(),
+        email: document.getElementById('email').value.trim(),
+        phone: document.getElementById('phone').value.trim(),
+        address: document.getElementById('address').value.trim()
+      };
+
+      const index = customers.findIndex(c => normalizeCustomerNumber(c.customerNumber) === customerNumber);
+      if (index >= 0) customers[index] = customer;
+      else customers.push(customer);
+
+      saveCustomers();
+      renderCustomers();
+      clearForm();
+      alert('Kunde lagret.');
+    });
+
+    renderCustomers();
+  </script>
+</body>
+</html>
